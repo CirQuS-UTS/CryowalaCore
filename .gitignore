@@ -118,3 +118,6 @@ dmypy.json
 *.png
 *.jpg
 *.jpeg
+
+# Anaconda
+.conda/
