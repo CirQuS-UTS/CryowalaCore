@@ -1,0 +1,9 @@
+name: cirqus_wiring
+
+dependencies:
+    - ipython
+    - ipykernel
+    - numpy
+    - pandas
+    - matplotlib
+    - scipy
