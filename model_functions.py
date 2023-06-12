@@ -19,7 +19,7 @@ def passive_load(stage_labels, diameters, lengths, therm_cond, therm_scheme, sta
         lengths - list
             a list of the lengths of the cable between stage i-1 and i (first index gives the 
             length from room temp to the first stage)
-        therm_cond - list of functions
+        therm_cond - list of functions TODO: (TC Coaxco for default cables)
             thermal conductivity as separate functions of temperature for the inner pin,
             dielectric, and outer conductor in that order
         therm_scheme - list of lists
@@ -97,7 +97,7 @@ def active_load_AC(stage_labels, signal_p, signal_f, att, cable_att, lengths):
             the frequency of the CW signal (in Hz)
         att - list
             a list giving the attenuation that the cable experiences at every stage
-        cable_att - function
+        cable_att - function TODO: C_att_4
             the attenuation of the cable as a function of frequency (in Hz)
         lengths - list
             the list of the cable lengths between stages
@@ -186,7 +186,7 @@ def active_load_DC(i_in, stage_labels, att, cable_rho, lengths, diameters):
 
 #----------------------------------------------------------------------------
 ### NOISE
-
+#TODO: Use drive and flux for now
 #output as floats (the stage_noise function itself serves like a spectral density function for all stages)
 def drive_noise(f, stage_labels, stage_temps, att, cable_att, lengths):
 
@@ -204,7 +204,7 @@ def drive_noise(f, stage_labels, stage_temps, att, cable_att, lengths):
             a list of the steady state temperatures of the stages when no heat load is present
         att - list
             a list giving the attenuation that the cable experiences at every stage
-        cable_att - list
+        cable_att - list 
             the attenuation of the cables at the main signal frequency (in units of dB/m)
         lengths - list
             the list of the cable lengths between stages in meters
@@ -235,6 +235,7 @@ def drive_noise(f, stage_labels, stage_temps, att, cable_att, lengths):
         )
 
     return noise
+
 
 def flux_noise_old(f, stage_labels, stage_temps, noise_i_in, att):
     """
@@ -306,6 +307,7 @@ def flux_noise(f, stage_labels, stage_temps, att, cable_att, lengths):
 #-----------------------------------------------------------------
 ### SNR
 
+#TODO: IGNORE THIS FUNCTION
 def drive_SNR(f,
                 p_in,
                 stage_labels,
@@ -330,7 +332,7 @@ def drive_SNR(f,
             list of strings naming the stage labels (purely for formatting the output)
         stage_temps - list
             a list of the steady state temperatures of the stages when no heat load is present
-        noise_p_in - function
+        noise_p_in - function TODO:
             the value of the noise power spectral density at the input frequency, f
         att - list
             a list giving the attenuation that the cable experiences at every stage
