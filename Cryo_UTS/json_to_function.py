@@ -1,6 +1,6 @@
 import json
-import model_functions
-import param_functions
+from . import model_functions
+from . import param_functions
 
 def passive_load(fridge_json):
     #Stage-specific Content
