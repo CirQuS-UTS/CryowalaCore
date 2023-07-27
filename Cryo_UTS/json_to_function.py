@@ -67,7 +67,8 @@ def active_load_AC(fridge_json):
                 temp_att_array.append(0)
         attenuation.append(temp_att_array)
         cable_att_func.append(param_functions.c_att_coaxco(cable['cAtt4Coaxco']))
-        input_signal_power.append(float(cable['inputSignalPower']))
+        #NOTE: Duty cycle * User defined input power = Actual power
+        input_signal_power.append(float(cable['inputSignalPower']) * float(cable['dutyCycle']))
         input_signal_frequency.append(float(cable['inputSignalFrequency']))
 
     results = []
