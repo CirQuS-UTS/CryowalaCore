@@ -19,22 +19,37 @@ fridge_ours = {'labels': ['50K', '4K', 'Still', 'CP', 'MXC'],
                'cool_p': [10, 0.5, 30e-3, 300e-6, 20e-6]}
 
 ### Cooling Power vs. Temperature
-def t_maker(point1, point2):
+# def t_maker(point1, point2):
 
-    def t_stage(power):
-        m = (point1[1] - point2[1]) / (point1[0] - point2[0])
-        return m * (power - point1[0]) + point1[1]
-    return t_stage
+#     def t_stage(power):
+#         m = (point1[1] - point2[1]) / (point1[0] - point2[0])
+#         return m * (power - point1[0]) + point1[1]
+#     return t_stage
 
-#point for interpolation of the temperature (excluding the still plate)
-points = [
-    ((5, 41.9), (10, 46)),
-    ((0, 3.07), (0.35, 3.7)),
-    ((0, 0.080), (300e-6, 0.148)),
-    ((0, 0.007), (20e-6, 0.019))
+# #point for interpolation of the temperature (excluding the still plate)
+# points = [
+#     ((5, 41.9), (10, 46)),
+#     ((0, 3.07), (0.35, 3.7)),
+#     ((0, 0.080), (300e-6, 0.148)),
+#     ((0, 0.007), (20e-6, 0.019))
+# ]
+
+# t_stages = [t_maker(p[0], p[1]) for p in points]
+
+# Takes heat loads in W for each stage and converts to temperature
+# Mapping index to stage:
+# 0 - 50K
+# 1 - 4K
+# 2 - Still
+# 3 - CP
+# 4 - MXC
+T_funcs = [
+    lambda x: 0.67242798*x + 40.3217972,
+    lambda x: 2.37254045e-3*(x*1e3) + 3.14897295e+00,
+    lambda x: max(5.14773526e-1 + np.sqrt(1.51323254e-2*(x*1e3+3.13354780e-16)), 1.188546308414531),
+    lambda x: 2.75310266e-2 + np.sqrt(3.51979935e-5*(x*1e6+6.77412336e+0)),
+    lambda x: 4.17914991e-4 + np.sqrt(1.78881055e-5*(x*1e6+3.30570481e+0)),
 ]
-
-t_stages = [t_maker(p[0], p[1]) for p in points]
 
 #------------------------------------------------------------------
 ### Cable Diameters

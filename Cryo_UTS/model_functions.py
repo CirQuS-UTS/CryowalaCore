@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from param_functions import *
 
 ### All the functions for the model
 
@@ -186,6 +187,100 @@ def active_load_DC(i_in, stage_labels, att, cable_rho, lengths, diameters):
 
 #----------------------------------------------------------------------------
 ### NOISE
+def noise_photons(temp, att, cable_att, lengths, f=6e9, stage_labels=fridge_ours['labels']):
+    """
+    Returns the noise in photons per second per Hz at all stages for a given input frequency f.   
+    This function essentially serves as the noise spectral density function in terms of 
+    photon number.
+
+    Parameters:
+        temp - list
+            a list of the steady state temperatures of the stages when no heat load is present
+        att - list
+            a list giving the attenuation that the cable experiences at every stage
+        cable_att - float
+            the attenuation of the cable material at the main signal frequency (in units of dB/m)
+        lengths - list
+            the list of the cable lengths between stages in meters
+        f - float / numpy array
+            input frequency for the noise spectral density
+        stage_labels - list
+            list of strings naming the stage labels (purely for formatting the output)
+    """
+
+    h = 6.626e-34
+    k_B = 1.381e-23
+    n_BE = lambda T, f: 1 / ( np.exp( h*f / (k_B*T) ) - 1 )
+
+    n_temp = [n_BE(t, f) for t in temp]
+    att_total = np.array(att) + cable_att * np.array(lengths)
+
+    for i in range(5):
+        n_temp[i] = n_temp[i] * (1-10**(-att_total[i]/10)) * (10**(-np.sum(att_total[-1:i:-1])/10))
+    
+    n_temp.insert(0, n_BE(300, 6e9)*10**(-np.sum(att_total)/10))
+
+    return pd.Series(
+        data=n_temp, 
+        index=['RT'] + stage_labels,
+        name='Photon Flux Spectral Density (No. Photons/s/Hz)',
+        dtype='object'
+    ) 
+
+def noise_current(temp, att, cable_att, lengths, R=50, f=6e9, stage_labels=fridge_ours['labels']):
+    """
+    Returns the noise in photons per second per Hz at all stages for a given input frequency f.   
+    This function essentially serves as the noise spectral density function in terms of 
+    photon number.
+
+    Parameters:
+        temp - list
+            a list of the steady state temperatures of the stages when no heat load is present
+        att - list
+            a list giving the attenuation that the cable experiences at every stage
+        cable_att - float
+            the attenuation of the cable material at the main signal frequency (in units of dB/m)
+        lengths - list
+            the list of the cable lengths between stages in meters
+        R - float
+            impedance of the transmission lines
+        f - float / numpy array
+            input frequency for the noise spectral density
+        stage_labels - list
+            list of strings naming the stage labels (purely for formatting the output)
+    """
+
+    h = 6.626e-34
+    
+    return np.sqrt(noise_photons(temp, att, cable_att, lengths, f=6e9, stage_labels=fridge_ours['labels']) *4*h*f/R)
+
+def noise_voltage(temp, att, cable_att, lengths, R=50, f=6e9, stage_labels=fridge_ours['labels']):
+    """
+    Returns the noise in photons per second per Hz at all stages for a given input frequency f.   
+    This function essentially serves as the noise spectral density function in terms of 
+    photon number.
+
+    Parameters:
+        temp - list
+            a list of the steady state temperatures of the stages when no heat load is present
+        att - list
+            a list giving the attenuation that the cable experiences at every stage
+        cable_att - float
+            the attenuation of the cable material at the main signal frequency (in units of dB/m)
+        lengths - list
+            the list of the cable lengths between stages in meters
+        R - float
+            impedance of the transmission lines
+        f - float / numpy array
+            input frequency for the noise spectral density
+        stage_labels - list
+            list of strings naming the stage labels (purely for formatting the output)
+    """
+
+    h = 6.626e-34
+    
+    return np.sqrt(noise_photons(temp, att, cable_att, lengths, f=6e9, stage_labels=fridge_ours['labels']) *4*h*f*R)
+
 #TODO: Use drive and flux for now
 #output as floats (the stage_noise function itself serves like a spectral density function for all stages)
 def drive_noise(f, stage_labels, stage_temps, att, cable_att, lengths):
