@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from param_functions import *
+#from param_functions import *
 
 ### All the functions for the model
 
@@ -187,7 +187,7 @@ def active_load_DC(i_in, stage_labels, att, cable_rho, lengths, diameters):
 
 #----------------------------------------------------------------------------
 ### NOISE
-def noise_photons(temp, att, cable_att, lengths, f=6e9, stage_labels=fridge_ours['labels']):
+def noise_photons(temp, att, cable_att, lengths, stage_labels, f=6e9):
     """
     Returns the noise in photons per second per Hz at all stages for a given input frequency f.   
     This function essentially serves as the noise spectral density function in terms of 
@@ -224,10 +224,10 @@ def noise_photons(temp, att, cable_att, lengths, f=6e9, stage_labels=fridge_ours
         data=n_temp, 
         index=['RT'] + stage_labels,
         name='Photon Flux Spectral Density (No. Photons/s/Hz)',
-        dtype='object'
+        dtype=np.float64
     ) 
 
-def noise_current(temp, att, cable_att, lengths, R=50, f=6e9, stage_labels=fridge_ours['labels']):
+def noise_current(temp, att, cable_att, lengths, stage_labels, R=50, f=6e9):
     """
     Returns the noise in photons per second per Hz at all stages for a given input frequency f.   
     This function essentially serves as the noise spectral density function in terms of 
@@ -252,9 +252,9 @@ def noise_current(temp, att, cable_att, lengths, R=50, f=6e9, stage_labels=fridg
 
     h = 6.626e-34
     
-    return np.sqrt(noise_photons(temp, att, cable_att, lengths, f=6e9, stage_labels=fridge_ours['labels']) *4*h*f/R)
+    return np.sqrt(noise_photons(temp, att, cable_att, lengths, stage_labels, f) *4*h*f/R)
 
-def noise_voltage(temp, att, cable_att, lengths, R=50, f=6e9, stage_labels=fridge_ours['labels']):
+def noise_voltage(temp, att, cable_att, lengths, stage_labels, R=50, f=6e9):
     """
     Returns the noise in photons per second per Hz at all stages for a given input frequency f.   
     This function essentially serves as the noise spectral density function in terms of 
@@ -279,7 +279,7 @@ def noise_voltage(temp, att, cable_att, lengths, R=50, f=6e9, stage_labels=fridg
 
     h = 6.626e-34
     
-    return np.sqrt(noise_photons(temp, att, cable_att, lengths, f=6e9, stage_labels=fridge_ours['labels']) *4*h*f*R)
+    return np.sqrt(noise_photons(temp, att, cable_att, lengths, stage_labels, f) *4*h*f*R)
 
 #TODO: Use drive and flux for now
 #output as floats (the stage_noise function itself serves like a spectral density function for all stages)
