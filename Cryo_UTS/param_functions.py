@@ -18,47 +18,98 @@ fridge_ours = {'labels': ['50K', '4K', 'Still', 'CP', 'MXC'],
                'lengths': [0.236, 0.337, 0.3, 0.15, 0.222],
                'cool_p': [10, 0.5, 30e-3, 300e-6, 20e-6]}
 
-### Cooling Power vs. Temperature
-# def t_maker(point1, point2):
+#---------------------------------------------------------------------
+### Temperature estimation
 
-#     def t_stage(power):
-#         m = (point1[1] - point2[1]) / (point1[0] - point2[0])
-#         return m * (power - point1[0]) + point1[1]
-#     return t_stage
+coeffs = np.array(
+    [
+        [
+            [-2.84462757e-2,  6.14328293e-1,  0.00000000e+0, 0.00000000e+0],
+            [-4.91928663e-3,  1.89496142e-3,  0.00000000e+0, 0.00000000e+0],
+            [-2.29812049e-2,  3.25335785e-2,  0.00000000e+0, 0.00000000e+0],
+            [ 2.04991379e-2, -1.78944956e-4,  0.00000000e+0, 0.00000000e+0],
+            [ 1.66500853e-2,  1.68560160e-4,  0.00000000e+0, 0.00000000e+0]
+        ],
 
-# #point for interpolation of the temperature (excluding the still plate)
-# points = [
-#     ((5, 41.9), (10, 46)),
-#     ((0, 3.07), (0.35, 3.7)),
-#     ((0, 0.080), (300e-6, 0.148)),
-#     ((0, 0.007), (20e-6, 0.019))
-# ]
+        [
+            [ 2.03577334e-3,  2.33226365e-2,  0.00000000e+0, 0.00000000e+0],
+            [ 1.52400937e-3,  2.33839654e-3,  0.00000000e+0, 0.00000000e+0],
+            [ 2.16019081e-3,  6.47209581e-3,  0.00000000e+0, 0.00000000e+0],
+            [-2.15628081e-4,  2.35905941e-5,  0.00000000e+0, 0.00000000e+0],
+            [ 1.05157802e-3, -3.40602022e-4,  0.00000000e+0, 0.00000000e+0]
+        ],
 
-# t_stages = [t_maker(p[0], p[1]) for p in points]
+        [
+            [ 7.92949604e-5,  1.41004249e-3,  0.00000000e+0, 0.00000000e+0],
+            [-1.02478043e-3,  8.63523085e-5,  0.00000000e+0, 0.00000000e+0],
+            [ 0.00000000e+0,  0.00000000e+0,  7.83759658e-2, 1.79787617e+1],
+            [-2.14938424e-4, -1.73050413e-6,  0.00000000e+0, 0.00000000e+0],
+            [ 1.97263046e-4, -1.13826468e-4,  0.00000000e+0, 0.00000000e+0]
+        ],
 
-# Takes heat loads in W for each stage and converts to temperature
-# Mapping index to stage:
-# 0 - 50K
-# 1 - 4K
-# 2 - Still
-# 3 - CP
-# 4 - MXC
-T_funcs = [
-    lambda x: 0.67242798*x + 40.3217972,
-    lambda x: 2.37254045e-3*(x*1e3) + 3.14897295e+00,
-    lambda x: max(5.14773526e-1 + np.sqrt(1.51323254e-2*(x*1e3+3.13354780e-16)), 1.188546308414531),
-    lambda x: 2.75310266e-2 + np.sqrt(3.51979935e-5*(x*1e6+6.77412336e+0)),
-    lambda x: 4.17914991e-4 + np.sqrt(1.78881055e-5*(x*1e6+3.30570481e+0)),
-]
+        [
+            [ 5.42210196e-6,  3.97531363e-5,  0.00000000e+0, 0.00000000e+0],
+            [-8.59342240e-6,  2.68716951e-6,  0.00000000e+0, 0.00000000e+0],
+            [ 5.73569662e-7,  5.17351534e-5,  0.00000000e+0, 0.00000000e+0],
+            [ 1.89729062e-5,  7.15643349e-5,  0.00000000e+0, 0.00000000e+0],
+            [ 1.99493827e-6,  2.08526457e-5,  0.00000000e+0, 0.00000000e+0]
+        ],
+
+        [
+            [-3.49658618e-7,  8.56669958e-6,  0.00000000e+0, 0.00000000e+0],
+            [-6.95765413e-6,  4.93801030e-7,  0.00000000e+0, 0.00000000e+0],
+            [ 0.00000000e+0,  0.00000000e+0, -8.83265839e-4, 1.61380894e+1],
+            [-3.36859606e-6,  3.10642203e-7,  0.00000000e+0, 0.00000000e+0],
+            [ 0.00000000e+0,  0.00000000e+0,  4.43619976e-3, 1.39739117e+1]
+        ]
+    ]
+)
+
+p0 = np.array([1, 100, 30, 60, 12])
+t0 = [4.20111000e+1, 3.41026571e+0, 1.20520821e+0, 1.63359036e-1, 1.64774143e-2]
+
+def l(x, a, b):
+    return a+b*x
+
+def q(x, a, b):
+    return np.nan_to_num(
+        a*(np.sqrt(x + b)-np.sqrt(b)), 
+        nan=-a*np.sqrt(b)
+    )
+
+def T_funcs(i, x, p0=p0):
+    """
+    Converts heat loads on all stages to the temperature on stage i
+
+    Parameters
+        i - int
+            the index of the stage whose temperature you wish to estimate
+        x - np.array of lenght 5
+            the total heat loads on each stage of the fridge (in the default unit of Watts)
+        p0 - np.array of length 5
+            the set point powers used for the fits
+    """
+    x = x*np.array([1, 1e3, 1e3, 1e6, 1e6]) - p0
+    y = np.sum(
+        x*coeffs[i, :, 1] 
+        + q(x, *coeffs[i, :, [2, 3]])
+    )
+    return t0[i] + y
 
 #------------------------------------------------------------------
 ### Cable Diameters
-diameters = {'219': [0.510e-3, 1.67e-3, 2.19e-3],
-             '119': [0.287e-3, 0.94e-3, 1.19e-3]}
+diameters = {
+    '219': [0.510e-3, 1.67e-3, 2.19e-3],
+    '119': [0.287e-3, 0.94e-3, 1.19e-3]
+}
 
-cs_areas = {key: [np.pi*(diameters[key][0]/2)**2, 
-                  np.pi*((diameters[key][1]/2)**2-(diameters[key][0]/2)**2),
-                  np.pi*((diameters[key][2]/2)**2-(diameters[key][1]/2)**2)] for key in diameters.keys()}
+cs_areas = {
+    key: [
+        np.pi*(diameters[key][0]/2)**2, 
+        np.pi*((diameters[key][1]/2)**2-(diameters[key][0]/2)**2),
+        np.pi*((diameters[key][2]/2)**2-(diameters[key][1]/2)**2)
+    ] for key in diameters.keys()
+}
 
 #------------------------------------------------------------------
 ### Thermal Conductivity
