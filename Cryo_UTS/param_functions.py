@@ -239,36 +239,124 @@ therm_cond_coaxco = {'119-AgBeCu-BeCu':tc_coaxco(1.74e-4, '119'),
 #--------------------------------------------------------------
 ### Cable Attenuation
 
-c_att_300_coaxco = {'119-AgBeCu-BeCu':c_att_coaxco([1.0, 1.4, 3.1, 4.4, 6.3]),
-                    '119-NbTi-NbTi':c_att_coaxco([5.3, 7.5, 16.9, 24.0, 34.1]),
-                    '119-SS-SS':c_att_coaxco([5.3, 7.4, 16.6, 23.5, 33.3]),
-                    '119-AgSS-SS':c_att_coaxco([1.8, 2.6, 5.8, 8.2, 11.6]),
-                    '119-CuNi-CuNi':c_att_coaxco([3.8, 5.4, 12.0, 17.0, 24.0]),
-                    '119-AgCuNi-CuNi':c_att_coaxco([1.5, 2.1, 4.7, 6.7, 9.5]),
-                    '119-BeCu-BeCu':c_att_coaxco([1.6, 2.3, 5.1, 7.3, 10.5]),
-                    '219-NbTi-NbTi':c_att_coaxco([3.0, 4.3, 9.6, 13.6, 19.4]),
-                    '219-CuNi-CuNi':c_att_coaxco([2.4, 3.4, 7.6, 10.8, 15.5]),
-                    '219-AgCuNi-CuNi':c_att_coaxco([0.8, 1.2, 2.7, 3.8, 5.3]),
-                    '219-SS-SS':c_att_coaxco([3.0, 4.2, 9.4, 13.5, 19.2]),
-                    '219-AgSS-SS':c_att_coaxco([1.0, 1.5, 3.3, 4.6, 6.5]),
-                    '219-BeCu-BeCu':c_att_coaxco([0.9, 1.3, 2.9, 4.1, 5.8]),
-                    '219-AgBeCu-BeCu':c_att_coaxco([0.6, 0.8, 1.8, 2.5, 3.5])
+#Function which generates a function for linterpolating cable attenuation based on frequency
+def c_att_generator(points):
+    """
+    Generates a function for interpolating cable attenuation dependent on frequency using bivariate cable data.
+    Takes in a list of points, where each point has a frequency and the measured attenuation at that frequency.
+
+    Parameters
+        points - array-like of array-likes
+            array of points where each point is a array-like of the form [frequency, attenuation]
+    Returns
+        func - function
+            a function that interpolates the attenuation at a given frequency
+    """
+
+    #unzip the array into a list of frequencies and a list of attenuations
+    x_points, y_points = list(zip(*points))
+    ind_sort = np.argsort(x_points)
+    x_points = np.array(x_points)[ind_sort]
+    y_points = np.array(y_points)[ind_sort]
+
+    def func(f):
+        """
+        Interpolates the attenuation at a given frequency. 
+        If the frequency is outside the range of the given points, returns None.
+
+        Parameters
+            f - float
+                the frequency at which to interpolate the attenuation
+        Returns
+            att - float or None
+                the interpolated attenuation at the given frequency
+                None if the frequency is outside the range of the given points
+        """
+        if f <= x_points[0]:
+            return None
+        for i in range(1, len(x_points)):
+            #find which two points the frequency lies between
+            if f <= x_points[i]:
+                m = (
+                    (y_points[i] - y_points[i-1]) 
+                    / (x_points[i] - x_points[i-1])
+                )
+                return m * (f - x_points[i]) + y_points[i]
+        else:
+            return None
+
+    return func
+
+def string_to_array_of_arrays(s):
+    """
+    Converts a string representation of tuples into a list of tuples with float elements.
+    The input string should have tuples in the format '(f1,a1),(f2,a2),...', where 'f' and 'a' 
+    are float values. The function removes any whitespace, splits the string by '),(', and 
+    converts each part into a tuple of floats.
+
+    Parameters
+        s - str
+            A string containing tuples in the format '(f1,a1),(f2,a2),...'.
+
+    Returns
+        list
+            A list of tuples, where each tuple contains two float elements.
+
+    Example
+        >>> string_to_array_of_arrays('(1.0, 2.0), (3.0, 4.0)')
+        [(1.0, 2.0), (3.0, 4.0)]
+    """
+    
+    # Remove whitespace and split the string by '),('
+    s = s.replace(' ', '')
+    parts = s.split('),(')
+    
+    # Initialize an empty list to store the tuples
+    result = []
+    
+    # Iterate over each part
+    for part in parts:
+        # Remove any remaining parentheses and split by comma
+        part = part.replace('(', '').replace(')', '')
+        f, a = part.split(',')
+        
+        # Convert to float and add as a tuple to the result list
+        result.append((float(f), float(a)))
+    
+    return result
+
+f_coaxco = [0.5, 1, 5, 10, 20]
+
+c_att_300_coaxco = {'119-AgBeCu-BeCu':c_att_generator(zip(f_coaxco, [1.0, 1.4, 3.1, 4.4, 6.3])),
+                    '119-NbTi-NbTi':c_att_generator(zip(f_coaxco, [5.3, 7.5, 16.9, 24.0, 34.1])),
+                    '119-SS-SS':c_att_generator(zip(f_coaxco, [5.3, 7.4, 16.6, 23.5, 33.3])),
+                    '119-AgSS-SS':c_att_generator(zip(f_coaxco, [1.8, 2.6, 5.8, 8.2, 11.6])),
+                    '119-CuNi-CuNi':c_att_generator(zip(f_coaxco, [3.8, 5.4, 12.0, 17.0, 24.0])),
+                    '119-AgCuNi-CuNi':c_att_generator(zip(f_coaxco, [1.5, 2.1, 4.7, 6.7, 9.5])),
+                    '119-BeCu-BeCu':c_att_generator(zip(f_coaxco, [1.6, 2.3, 5.1, 7.3, 10.5])),
+                    '219-NbTi-NbTi':c_att_generator(zip(f_coaxco, [3.0, 4.3, 9.6, 13.6, 19.4])),
+                    '219-CuNi-CuNi':c_att_generator(zip(f_coaxco, [2.4, 3.4, 7.6, 10.8, 15.5])),
+                    '219-AgCuNi-CuNi':c_att_generator(zip(f_coaxco, [0.8, 1.2, 2.7, 3.8, 5.3])),
+                    '219-SS-SS':c_att_generator(zip(f_coaxco, [3.0, 4.2, 9.4, 13.5, 19.2])),
+                    '219-AgSS-SS':c_att_generator(zip(f_coaxco, [1.0, 1.5, 3.3, 4.6, 6.5])),
+                    '219-BeCu-BeCu':c_att_generator(zip(f_coaxco, [0.9, 1.3, 2.9, 4.1, 5.8])),
+                    '219-AgBeCu-BeCu':c_att_generator(zip(f_coaxco, [0.6, 0.8, 1.8, 2.5, 3.5]))
 }
 
-c_att_4_coaxco = {'119-AgBeCu-BeCu':c_att_coaxco([0.3, 0.5, 1.1, 1.5, 2.2]),
-                  '119-NbTi-NbTi':c_att_coaxco([0, 0, 0, 0, 0]),
-                  '119-SS-SS':c_att_coaxco([3.3, 4.7, 10.4, 14.7, 20.8]),
-                  '119-AgSS-SS':c_att_coaxco([0.8, 1.2, 2.6, 3.7, 5.2]),
-                  '119-CuNi-CuNi':c_att_coaxco([2.9, 4.1, 9.1, 12.9, 18.3]),
-                  '119-AgCuNi-CuNi':c_att_coaxco([0.7, 1.0, 2.3, 3.3, 4.6]),
-                  '119-BeCu-BeCu':c_att_coaxco([1.3, 1.8, 4.0, 5.6, 7.9]),
-                  '219-NbTi-NbTi':c_att_coaxco([0,0,0,0,0]),
-                  '219-CuNi-CuNi':c_att_coaxco([1.6, 2.3, 5.1, 7.2, 10.2]),
-                  '219-AgCuNi-CuNi':c_att_coaxco([0.4, 0.6, 1.3, 1.8, 2.6]),
-                  '219-SS-SS':c_att_coaxco([1.9, 2.6, 5.9, 8.3, 11.7]),
-                  '219-AgSS-SS':c_att_coaxco([0.5, 0.7, 1.5, 2.1, 2.9]),
-                  '219-BeCu-BeCu':c_att_coaxco([0.7, 1.0, 2.2, 3.2, 4.5]),
-                  '219-AgBeCu-BeCu':c_att_coaxco([0.2, 0.3, 0.6, 0.9, 1.2])
+c_att_4_coaxco = {'119-AgBeCu-BeCu':c_att_generator(zip(f_coaxco, [0.3, 0.5, 1.1, 1.5, 2.2])),
+                  '119-NbTi-NbTi':c_att_generator(zip(f_coaxco, [0, 0, 0, 0, 0])),
+                  '119-SS-SS':c_att_generator(zip(f_coaxco, [3.3, 4.7, 10.4, 14.7, 20.8])),
+                  '119-AgSS-SS':c_att_generator(zip(f_coaxco, [0.8, 1.2, 2.6, 3.7, 5.2])),
+                  '119-CuNi-CuNi':c_att_generator(zip(f_coaxco, [2.9, 4.1, 9.1, 12.9, 18.3])),
+                  '119-AgCuNi-CuNi':c_att_generator(zip(f_coaxco, [0.7, 1.0, 2.3, 3.3, 4.6])),
+                  '119-BeCu-BeCu':c_att_generator(zip(f_coaxco, [1.3, 1.8, 4.0, 5.6, 7.9])),
+                  '219-NbTi-NbTi':c_att_generator(zip(f_coaxco, [0,0,0,0,0])),
+                  '219-CuNi-CuNi':c_att_generator(zip(f_coaxco, [1.6, 2.3, 5.1, 7.2, 10.2])),
+                  '219-AgCuNi-CuNi':c_att_generator(zip(f_coaxco, [0.4, 0.6, 1.3, 1.8, 2.6])),
+                  '219-SS-SS':c_att_generator(zip(f_coaxco, [1.9, 2.6, 5.9, 8.3, 11.7])),
+                  '219-AgSS-SS':c_att_generator(zip(f_coaxco, [0.5, 0.7, 1.5, 2.1, 2.9])),
+                  '219-BeCu-BeCu':c_att_generator(zip(f_coaxco, [0.7, 1.0, 2.2, 3.2, 4.5])),
+                  '219-AgBeCu-BeCu':c_att_generator(zip(f_coaxco, [0.2, 0.3, 0.6, 0.9, 1.2]))
 }
 
 ###----------------------------------------------
