@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from scipy.optimize import curve_fit
 
 ### All the parameters for the fridges and cables
 
@@ -95,6 +96,80 @@ def T_funcs(i, x, p0=p0):
         + q(x, *coeffs[i, :, [2, 3]])
     )
     return t0[i] + y
+
+def linear_model(x, a, b):
+    return a*x + b
+
+def sqrt_model(x, a, b, c):
+    return np.nan_to_num(
+        a*np.sqrt(x-b) + c,
+        nan=c,
+    )
+
+def mixed_model(x, a, b, c, d):
+    return np.nan_to_num(
+        a*np.sqrt(x-b) + c*x + d,
+        nan=c*x+d
+    )
+
+def generate_t_funcs(data):
+    """
+    Generate temperature estimation functions for each stage using csv data as input
+
+    Parameters
+        data: np.array
+            Contains correlated data for applied powers and measured temperatures of all 5 fridge stages.
+            Columns should have the following order:
+            [P_50K, P_4K, P_Still, P_CP, P_MXC, T_50K, T_4K, T_Still, T_CP, T_MXC]
+            Where P_i is the applied power for stage i and T_i is the measured temperature for stage i.
+            Powers are in W and temperatures are in K
+    Returns
+        T_funcs: function
+            List of functions that estimate temperature for each stage given the applied power.
+        bounds: list
+            List of tuples that contain the bounds for input heat loads of each stage.
+    """
+
+    # Determine bounds for each stage
+    bounds = [(data[:, i].min(), data[:, i].max()) for i in range(5)]
+
+    # Determine the common base point from which individual power sweeps are performed
+    base_P = []
+    for i in range(5):
+        vals, counts = np.unique(data[:, i], return_counts=True)
+        base_P.append(vals[counts.argmax()])
+
+    conditions = [(np.abs(data[:, i]/base_P[i] - 1) < 0.025) for i in range(5)]
+    condition = np.prod(conditions, 0).astype(bool)
+    base_T = data[condition, 5:].mean(axis=0)
+
+    # fit for each pair of stages
+    popts = np.zeros((5, 5, 4))
+    for i in range(5):
+        for j in range(5):
+            x  = data[data[:, j] != base_P[j], j]
+            y = data[data[:, j] != base_P[j], 5+i] - base_T[i]
+
+            # selecting a model
+            if i < 2 or j < 2:
+                popt, _ = curve_fit(linear_model, x, y, p0=[0, 0])
+                popts[i, j, 2:] = popt
+            else:
+                try:
+                    popt, _ = curve_fit(mixed_model, x, y, p0=[1]*4, maxfev=10000)
+                    popts[i, j, :] = popt
+                except:
+                    popt, _ = curve_fit(linear_model, x, y, p0=[0]*2)
+                    popts[i, j, 2:] = popt
+
+    # Generate temperature estimation functions
+    def T_funcs(i, x):
+        T = base_T[i]
+        for j in range(5):
+            T += mixed_model(x[j], *popts[i, j, :])
+        return T
+
+    return T_funcs, bounds
 
 #------------------------------------------------------------------
 ### Cable Diameters
