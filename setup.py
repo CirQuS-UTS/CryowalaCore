@@ -1,5 +1,5 @@
 #For creating the package
-#Imports numpy, pandas, json
+#Imports numpy, pandas, json, scipy
 from setuptools import setup
 setup(
     name='CryowalaCore',
@@ -9,5 +9,6 @@ setup(
     install_requires=[
         'numpy',
         'pandas',
+        'scipy',
     ]
 )
